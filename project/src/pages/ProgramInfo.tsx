@@ -26,7 +26,7 @@ const ProgramInfo = () => {
         {/* Header */}
         <div className="text-center mb-12">
           <h1 className="text-4xl font-bold text-gray-900 mb-4">
-            Government Aid Programs for Small Landlords
+            Government Fund Programs for Small Landlords
           </h1>
           <p className="text-xl text-gray-600 max-w-3xl mx-auto">
             Comprehensive information about available government funding programs and how our professional application service helps small landlords access these opportunities.
@@ -35,7 +35,7 @@ const ProgramInfo = () => {
 
         {/* Program Overview */}
         <div className="bg-blue-50 border border-blue-200 rounded-xl p-8 mb-8">
-          <h2 className="text-2xl font-bold text-blue-900 mb-4">About Government Aid Programs</h2>
+          <h2 className="text-2xl font-bold text-blue-900 mb-4">About Government Fund Programs</h2>
           <p className="text-blue-800 leading-relaxed mb-4">
             There are government programs designed to help small landlords maintain safe, quality rental housing. 
             These programs provide financial assistance for repairs and improvements to rental properties.
@@ -66,7 +66,7 @@ const ProgramInfo = () => {
         <div className="bg-white rounded-xl shadow-lg p-8 mb-8">
           <div className="flex items-center mb-6">
             <DollarSign className="h-8 w-8 text-blue-600 mr-3" />
-            <h2 className="text-2xl font-bold text-gray-900">Available Government Aid Categories</h2>
+            <h2 className="text-2xl font-bold text-gray-900">Available Government Fund Categories</h2>
           </div>
           <div className="space-y-6">
             {fundingLimits.map((category, index) => (
@@ -134,7 +134,7 @@ const ProgramInfo = () => {
               <ul className="space-y-2 text-amber-700">
                 <li>• All work must be performed by licensed and insured contractors</li>
                 <li>• Properties subject to pre and post repair inspections</li>
-                <li>• Our professional service fee is separate from government aid</li>
+                <li>• Our professional service fee is separate from government funds</li>
               </ul>
             </div>
           </div>

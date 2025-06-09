@@ -1,7 +1,8 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowRight, ArrowLeft, CheckCircle, Home, User, FileText, DollarSign } from 'lucide-react';
 import { phillyAddresses } from '../data/phillyAddresses';
+import { useNavigate, useLocation } from 'react-router-dom';
 
 interface UnitInfo {
   unitNumber: string;
@@ -21,6 +22,7 @@ interface FormData {
   units: UnitInfo[];
   repairType: string[];
   estimatedCost: string;
+  preferredContact?: 'email' | 'phone';
 }
 
 function isValidPhone(phone: string) {
@@ -34,7 +36,10 @@ function isValidEmail(email: string) {
 
 const QualificationForm = () => {
   const navigate = useNavigate();
-  const [currentStep, setCurrentStep] = useState(1);
+  const location = useLocation();
+  const params = new URLSearchParams(location.search);
+  const initialStep = parseInt(params.get('step') || '1', 10);
+  const [currentStep, setCurrentStep] = useState(initialStep);
   const [phoneError, setPhoneError] = useState<string | null>(null);
   const [emailError, setEmailError] = useState<string | null>(null);
   const [addressError, setAddressError] = useState<string | null>(null);
@@ -52,12 +57,32 @@ const QualificationForm = () => {
     units: [{ unitNumber: 'Unit 1', monthlyRent: '', vacant: false, ownerOccupied: false }],
     repairType: [],
     estimatedCost: '',
+    preferredContact: undefined,
   });
+
+  useEffect(() => {
+      const saved = localStorage.getItem('landlordApplication');
+      if (saved) {
+        try {
+          const parsed = JSON.parse(saved);
+          setFormData(parsed);
+        } catch (e) {
+          // If parsing fails, ignore and use default
+        }
+      }
+  }, []);
+  useEffect(() => {
+      setCurrentStep(initialStep);
+      // eslint-disable-next-line
+  }, [location.search]);
 
   // Local address autocomplete state
   const [addressSuggestions, setAddressSuggestions] = useState<string[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const addressInputRef = useRef<HTMLInputElement>(null);
+  
+
+
 
   const steps = [
     { id: 1, title: 'Personal Information', icon: User, description: 'Tell us about yourself' },
@@ -281,6 +306,36 @@ const QualificationForm = () => {
               {phoneError && (
                 <p className="text-red-600 text-sm mt-1">{phoneError}</p>
               )}
+            </div>
+            <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+            Preferred Contact Method
+            </label>
+            <div className="flex gap-6">
+            <label className="inline-flex items-center">
+                <input
+                type="checkbox"
+                checked={formData.preferredContact === 'email'}
+                onChange={e => handleInputChange('preferredContact', e.target.checked ? 'email' : undefined)}
+                className="mr-2"
+                disabled={!formData.email}
+                />
+                <span>Email</span>
+            </label>
+            <label className="inline-flex items-center">
+                <input
+                type="checkbox"
+                checked={formData.preferredContact === 'phone'}
+                onChange={e => handleInputChange('preferredContact', e.target.checked ? 'phone' : undefined)}
+                className="mr-2"
+                disabled={!formData.phone}
+                />
+                <span>Phone</span>
+            </label>
+            </div>
+            <p className="text-xs text-gray-500 mt-1">
+            {(!formData.email && !formData.phone) && "Enter an email or phone to select a preferred method."}
+            </p>
             </div>
           </div>
         );

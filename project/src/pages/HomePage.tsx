@@ -34,11 +34,11 @@ const HomePage = () => {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
             <div>
               <h1 className="text-4xl md:text-5xl font-bold leading-tight mb-6">
-                Aid for rental repairs.
+                Funds for rental repairs.
               </h1>
               <p className="text-xl text-blue-100 mb-8 leading-relaxed">
                 We specialize in helping small landlords navigate government funding applications. 
-                Our experts guide you through every step to access up to $100,000 in government aid for rental property repairs.
+                Our experts guide you through every step to access up to $100,000 in government funds for rental property repairs.
               </p>
               <div className="flex flex-col sm:flex-row gap-4">
                 <Link
@@ -167,7 +167,7 @@ const HomePage = () => {
             Ready to Access Government Funding?
           </h2>
           <p className="text-xl text-green-100 mb-8">
-            Join the small landlords who trust our professional application service to secure government aid for their properties.
+            Join the small landlords who trust our professional application service to secure government funds for their properties.
           </p>
           <Link
             to="/qualify"
