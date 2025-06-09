@@ -1,47 +1,63 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowRight, ArrowLeft, CheckCircle, Home, User, FileText, DollarSign } from 'lucide-react';
+import { phillyAddresses } from '../data/phillyAddresses';
 
 interface UnitInfo {
   unitNumber: string;
   monthlyRent: string;
+  vacant?: boolean;
+  ownerOccupied?: boolean;
 }
 
 interface FormData {
-  // Personal Info
   firstName: string;
   lastName: string;
   email: string;
   phone: string;
-  
-  // Property Info
   propertyAddress: string;
   numberOfUnits: string;
-  
-  // Rental Info
   rentedOut: string;
   units: UnitInfo[];
-  
-  // Repair Info
   repairType: string[];
   estimatedCost: string;
+}
+
+function isValidPhone(phone: string) {
+  const cleaned = phone.replace(/\D/g, '');
+  return cleaned.length === 10;
+}
+
+function isValidEmail(email: string) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
 
 const QualificationForm = () => {
   const navigate = useNavigate();
   const [currentStep, setCurrentStep] = useState(1);
+  const [phoneError, setPhoneError] = useState<string | null>(null);
+  const [emailError, setEmailError] = useState<string | null>(null);
+  const [addressError, setAddressError] = useState<string | null>(null);
+  const [unitErrors, setUnitErrors] = useState<string[]>([]);
+  const [costError, setCostError] = useState<string | null>(null);
+
   const [formData, setFormData] = useState<FormData>({
     firstName: '',
     lastName: '',
     email: '',
     phone: '',
     propertyAddress: '',
-    numberOfUnits: '',
+    numberOfUnits: '1',
     rentedOut: '',
-    units: [],
+    units: [{ unitNumber: 'Unit 1', monthlyRent: '', vacant: false, ownerOccupied: false }],
     repairType: [],
     estimatedCost: '',
   });
+
+  // Local address autocomplete state
+  const [addressSuggestions, setAddressSuggestions] = useState<string[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const addressInputRef = useRef<HTMLInputElement>(null);
 
   const steps = [
     { id: 1, title: 'Personal Information', icon: User, description: 'Tell us about yourself' },
@@ -55,28 +71,42 @@ const QualificationForm = () => {
     'Exterior Repairs', 'Kitchen Renovation', 'Bathroom Renovation', 'Safety Improvements'
   ];
 
-  const handleInputChange = (field: string, value: string | string[] | UnitInfo[]) => {
+  const handleInputChange = (field: string, value: any) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
   const handleNumberOfUnitsChange = (value: string) => {
-    const numUnits = parseInt(value) || 0;
-    const units: UnitInfo[] = Array.from({ length: numUnits }, (_, index) => ({
-      unitNumber: `Unit ${index + 1}`,
-      monthlyRent: ''
-    }));
-    
-    setFormData(prev => ({ 
-      ...prev, 
+    const numUnits = Math.max(1, parseInt(value) || 1);
+    const units: UnitInfo[] = Array.from({ length: numUnits }, (_, index) => {
+      const prev = formData.units[index] || {};
+      return {
+        unitNumber: prev.unitNumber || `Unit ${index + 1}`,
+        monthlyRent: (prev.vacant || prev.ownerOccupied) ? '0' : (prev.monthlyRent || ''),
+        vacant: prev.vacant || false,
+        ownerOccupied: prev.ownerOccupied || false,
+      };
+    });
+    setFormData(prev => ({
+      ...prev,
       numberOfUnits: value,
       units: units
     }));
   };
 
-  const handleUnitChange = (index: number, field: keyof UnitInfo, value: string) => {
+  const handleUnitChange = (index: number, field: keyof UnitInfo, value: string | boolean) => {
     const updatedUnits = [...formData.units];
-    updatedUnits[index] = { ...updatedUnits[index], [field]: value };
-    handleInputChange('units', updatedUnits);
+    if (field === 'vacant' || field === 'ownerOccupied') {
+      updatedUnits[index][field] = value as boolean;
+      if (value) {
+        // Uncheck the other if this one is checked
+        if (field === 'vacant') updatedUnits[index].ownerOccupied = false;
+        if (field === 'ownerOccupied') updatedUnits[index].vacant = false;
+        updatedUnits[index].monthlyRent = '0';
+      }
+    } else {
+      updatedUnits[index][field] = value as string;
+    }
+    setFormData(prev => ({ ...prev, units: updatedUnits }));
   };
 
   const handleRepairTypeChange = (repairType: string, checked: boolean) => {
@@ -87,45 +117,99 @@ const QualificationForm = () => {
     }
   };
 
-  const nextStep = () => {
-    if (currentStep < 4) {
-      setCurrentStep(currentStep + 1);
+  // --- Step Validation Functions ---
+
+  function validateStep1() {
+    setEmailError(null);
+    setPhoneError(null);
+    let valid = true;
+
+    if (!formData.email && !formData.phone) {
+      setEmailError('At least one contact method is required.');
+      setPhoneError('At least one contact method is required.');
+      valid = false;
     }
+    if (formData.email && !isValidEmail(formData.email.trim())) {
+      setEmailError('Please enter a valid email address.');
+      valid = false;
+    }
+    if (formData.phone && !isValidPhone(formData.phone.trim())) {
+      setPhoneError('Please enter a valid 10-digit US phone number.');
+      valid = false;
+    }
+    return valid;
+  }
+
+  function validateStep2() {
+    setAddressError(null);
+    let valid = true;
+    if (!formData.propertyAddress.trim()) {
+      setAddressError('Property address is required.');
+      valid = false;
+    }
+    if (!formData.numberOfUnits || parseInt(formData.numberOfUnits) < 1) {
+      setAddressError('Number of units is required.');
+      valid = false;
+    }
+    return valid;
+  }
+
+  function validateStep3() {
+    const errors: string[] = [];
+    formData.units.forEach((unit, idx) => {
+      if (
+        (!unit.vacant && !unit.ownerOccupied && (!unit.monthlyRent || unit.monthlyRent === '0')) ||
+        (unit.monthlyRent && parseFloat(unit.monthlyRent) < 0)
+      ) {
+        errors[idx] = 'Enter rent or check Vacant/Owner Occupied';
+      } else {
+        errors[idx] = '';
+      }
+    });
+    setUnitErrors(errors);
+    return errors.every(e => !e);
+  }
+
+  function validateStep4() {
+    setCostError(null);
+    if (!formData.estimatedCost) {
+      setCostError('Estimated repair cost is required.');
+      return false;
+    }
+    return true;
+  }
+
+  // --- Navigation ---
+
+  const nextStep = () => {
+    let valid = true;
+    if (currentStep === 1) valid = validateStep1();
+    if (currentStep === 2) valid = validateStep2();
+    if (currentStep === 3) valid = validateStep3();
+    if (valid && currentStep < 4) setCurrentStep(currentStep + 1);
   };
 
   const prevStep = () => {
-    if (currentStep > 1) {
-      setCurrentStep(currentStep - 1);
+    if (currentStep > 1) setCurrentStep(currentStep - 1);
+  };
+
+  const handleSubmit = async () => {
+    if (!validateStep4()) return;
+    try {
+      await fetch('/api/applications', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData),
+      });
+      localStorage.setItem('landlordApplication', JSON.stringify(formData));
+      navigate('/dashboard');
+    } catch (error) {
+      alert('There was an error submitting your application. Please try again.');
+      console.error(error);
     }
   };
 
-  //const handleSubmit = () => {
-    // Store form data and navigate to dashboard
-  //  localStorage.setItem('landlordApplication', JSON.stringify(formData));
-  //  navigate('/dashboard');
-  //};
-
-  const handleSubmit = async () => {
-  try {
-    // Send form data to the backend API
-    await fetch('/api/applications', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(formData),
-    });
-
-    // Optionally keep this for local user experience
-    localStorage.setItem('landlordApplication', JSON.stringify(formData));
-
-    // Navigate to dashboard
-    navigate('/dashboard');
-  } catch (error) {
-    // Optionally handle errors (show a message, etc.)
-    alert('There was an error submitting your application. Please try again.');
-    console.error(error);
-  }
-};
-
+  // --- Render Steps ---
 
   const renderStepContent = () => {
     switch (currentStep) {
@@ -140,7 +224,7 @@ const QualificationForm = () => {
                 <input
                   type="text"
                   value={formData.firstName}
-                  onChange={(e) => handleInputChange('firstName', e.target.value)}
+                  onChange={e => handleInputChange('firstName', e.target.value)}
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   placeholder="Enter your first name"
                 />
@@ -152,7 +236,7 @@ const QualificationForm = () => {
                 <input
                   type="text"
                   value={formData.lastName}
-                  onChange={(e) => handleInputChange('lastName', e.target.value)}
+                  onChange={e => handleInputChange('lastName', e.target.value)}
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   placeholder="Enter your last name"
                 />
@@ -160,31 +244,46 @@ const QualificationForm = () => {
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Email Address *
+                Email Address
               </label>
               <input
                 type="email"
                 value={formData.email}
-                onChange={(e) => handleInputChange('email', e.target.value)}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                onChange={e => {
+                  handleInputChange('email', e.target.value);
+                  if (emailError) setEmailError(null);
+                }}
+                className={`w-full px-4 py-3 border ${emailError ? 'border-red-500' : 'border-gray-300'} rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
                 placeholder="Enter your email address"
               />
+              {emailError && (
+                <p className="text-red-600 text-sm mt-1">{emailError}</p>
+              )}
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Phone Number *
+                Phone Number
               </label>
               <input
                 type="tel"
                 value={formData.phone}
-                onChange={(e) => handleInputChange('phone', e.target.value)}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                onChange={e => {
+                  const value = e.target.value;
+                  if (/^[0-9()\-\s.]*$/.test(value)) {
+                    handleInputChange('phone', value);
+                    if (phoneError) setPhoneError(null);
+                  }
+                }}
+                className={`w-full px-4 py-3 border ${phoneError ? 'border-red-500' : 'border-gray-300'} rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
                 placeholder="(215) 555-0123"
+                maxLength={14}
               />
+              {phoneError && (
+                <p className="text-red-600 text-sm mt-1">{phoneError}</p>
+              )}
             </div>
           </div>
         );
-
       case 2:
         return (
           <div className="space-y-6">
@@ -192,13 +291,64 @@ const QualificationForm = () => {
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Property Address *
               </label>
-              <input
-                type="text"
-                value={formData.propertyAddress}
-                onChange={(e) => handleInputChange('propertyAddress', e.target.value)}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                placeholder="1234 Main Street, Philadelphia, PA 19102"
-              />
+              <div style={{ position: 'relative' }}>
+                <input
+                  type="text"
+                  value={formData.propertyAddress}
+                  onChange={e => {
+                    const value = e.target.value;
+                    handleInputChange('propertyAddress', value);
+                    if (value.length > 2) {
+                      const normalize = (str: string) =>
+                        str.replace(/,/g, '').replace(/\s+/g, ' ').trim().toLowerCase();
+                      const suggestions = phillyAddresses.filter(addr =>
+                        normalize(addr).startsWith(normalize(value))
+                      ).slice(0, 8);
+                      setAddressSuggestions(suggestions);
+                      setShowSuggestions(suggestions.length > 0);
+                    } else {
+                      setShowSuggestions(false);
+                    }
+                  }}
+                  onBlur={() => setTimeout(() => setShowSuggestions(false), 100)}
+                  onFocus={() => {
+                    const value = formData.propertyAddress;
+                    if (value.length > 2) {
+                      const normalize = (str: string) =>
+                        str.replace(/,/g, '').replace(/\s+/g, ' ').trim().toLowerCase();
+                      const suggestions = phillyAddresses.filter(addr =>
+                        normalize(addr).startsWith(normalize(value))
+                      ).slice(0, 8);
+                      setAddressSuggestions(suggestions);
+                      setShowSuggestions(suggestions.length > 0);
+                    }
+                  }}
+                  ref={addressInputRef}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="1234 Main Street, Philadelphia, PA 19102"
+                  autoComplete="off"
+                />
+                {showSuggestions && addressSuggestions.length > 0 && (
+                  <ul className="absolute z-10 bg-white border border-gray-300 w-full max-h-48 overflow-y-auto rounded shadow">
+                    {addressSuggestions.map((suggestion, idx) => (
+                      <li
+                        key={idx}
+                        className="px-4 py-2 hover:bg-blue-100 cursor-pointer"
+                        onMouseDown={() => {
+                          handleInputChange('propertyAddress', suggestion);
+                          setShowSuggestions(false);
+                          addressInputRef.current?.blur();
+                        }}
+                      >
+                        {suggestion}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+              {addressError && (
+                <p className="text-red-600 text-sm mt-1">{addressError}</p>
+              )}
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -206,120 +356,110 @@ const QualificationForm = () => {
               </label>
               <select
                 value={formData.numberOfUnits}
-                onChange={(e) => handleNumberOfUnitsChange(e.target.value)}
+                onChange={e => handleNumberOfUnitsChange(e.target.value)}
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               >
                 <option value="">Select number of units</option>
-                <option value="1">1 Unit</option>
-                <option value="2">2 Units</option>
-                <option value="3">3 Units</option>
-                <option value="4">4 Units</option>
-                <option value="5">5 Units</option>
-                <option value="6">6 Units</option>
-                <option value="7">7 Units</option>
-                <option value="8">8 Units</option>
-                <option value="9">9 Units</option>
-                <option value="10">10 Units</option>
+                {[...Array(10)].map((_, i) => (
+                  <option key={i + 1} value={i + 1}>{i + 1} Unit{ i > 0 ? 's' : ''}</option>
+                ))}
               </select>
             </div>
           </div>
         );
-
       case 3:
         return (
           <div className="space-y-6">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Is this property currently rented out? *
+                Unit Information *
               </label>
-              <div className="space-y-3">
-                <label className="flex items-center">
-                  <input
-                    type="radio"
-                    value="yes"
-                    checked={formData.rentedOut === 'yes'}
-                    onChange={(e) => handleInputChange('rentedOut', e.target.value)}
-                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300"
-                  />
-                  <span className="ml-3">Yes, currently rented</span>
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Number of Rental Units *
                 </label>
-                <label className="flex items-center">
-                  <input
-                    type="radio"
-                    value="vacant"
-                    checked={formData.rentedOut === 'vacant'}
-                    onChange={(e) => handleInputChange('rentedOut', e.target.value)}
-                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300"
-                  />
-                  <span className="ml-3">Currently vacant</span>
-                </label>
-                <label className="flex items-center">
-                  <input
-                    type="radio"
-                    value="preparing"
-                    checked={formData.rentedOut === 'preparing'}
-                    onChange={(e) => handleInputChange('rentedOut', e.target.value)}
-                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300"
-                  />
-                  <span className="ml-3">Preparing to rent</span>
-                </label>
+                <select
+                  value={formData.numberOfUnits}
+                  onChange={e => handleNumberOfUnitsChange(e.target.value)}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                >
+                  {[...Array(10)].map((_, i) => (
+                    <option key={i + 1} value={i + 1}>{i + 1} Unit{ i > 0 ? 's' : ''}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="space-y-4">
+                {formData.units.map((unit, index) => (
+                  <div key={index} className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 border border-gray-200 rounded-lg">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-600 mb-2">
+                        Unit Number/Identifier
+                      </label>
+                      <input
+                        type="text"
+                        value={unit.unitNumber}
+                        onChange={e => handleUnitChange(index, 'unitNumber', e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        placeholder={`Unit ${index + 1}`}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-600 mb-2">
+                        Monthly Rent ($)
+                      </label>
+                      <input
+                        type="number"
+                        value={unit.monthlyRent}
+                        disabled={unit.vacant || unit.ownerOccupied}
+                        onChange={e => handleUnitChange(index, 'monthlyRent', e.target.value)}
+                        className={`w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent ${unit.vacant || unit.ownerOccupied ? 'bg-gray-100 text-gray-400' : ''}`}
+                        placeholder="1200"
+                        min="0"
+                      />
+                      {unitErrors[index] && (
+                        <p className="text-red-600 text-sm mt-1">{unitErrors[index]}</p>
+                      )}
+                    </div>
+                    <div className="flex flex-col justify-center gap-2 mt-6 md:mt-0">
+                      <label className="inline-flex items-center">
+                        <input
+                          type="checkbox"
+                          checked={!!unit.vacant}
+                          onChange={e => handleUnitChange(index, 'vacant', e.target.checked)}
+                          className="mr-2"
+                        />
+                        Vacant
+                      </label>
+                      <label className="inline-flex items-center">
+                        <input
+                          type="checkbox"
+                          checked={!!unit.ownerOccupied}
+                          onChange={e => handleUnitChange(index, 'ownerOccupied', e.target.checked)}
+                          className="mr-2"
+                        />
+                        Owner Occupied
+                      </label>
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
-
-            {formData.numberOfUnits && parseInt(formData.numberOfUnits) > 0 && (
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-4">
-                  Unit Information *
-                </label>
-                <div className="space-y-4">
-                  {formData.units.map((unit, index) => (
-                    <div key={index} className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 border border-gray-200 rounded-lg">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-600 mb-2">
-                          Unit Number/Identifier
-                        </label>
-                        <input
-                          type="text"
-                          value={unit.unitNumber}
-                          onChange={(e) => handleUnitChange(index, 'unitNumber', e.target.value)}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                          placeholder={`Unit ${index + 1}`}
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-600 mb-2">
-                          Monthly Rent ($)
-                        </label>
-                        <input
-                          type="number"
-                          value={unit.monthlyRent}
-                          onChange={(e) => handleUnitChange(index, 'monthlyRent', e.target.value)}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                          placeholder="1200"
-                        />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
           </div>
         );
-
       case 4:
         return (
           <div className="space-y-6">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-4">
-                What type of repairs do you need? (Select all that apply) *
+                What type of repairs do you need? (Select all that apply)
               </label>
               <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                {repairTypes.map((type) => (
+                {repairTypes.map(type => (
                   <label key={type} className="flex items-center p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer">
                     <input
                       type="checkbox"
                       checked={formData.repairType.includes(type)}
-                      onChange={(e) => handleRepairTypeChange(type, e.target.checked)}
+                      onChange={e => handleRepairTypeChange(type, e.target.checked)}
                       className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
                     />
                     <span className="ml-3 text-sm">{type}</span>
@@ -334,7 +474,7 @@ const QualificationForm = () => {
                 </label>
                 <select
                   value={formData.estimatedCost}
-                  onChange={(e) => handleInputChange('estimatedCost', e.target.value)}
+                  onChange={e => handleInputChange('estimatedCost', e.target.value)}
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 >
                   <option value="">Select cost range</option>
@@ -343,11 +483,13 @@ const QualificationForm = () => {
                   <option value="51-75k">$51,000 - $75,000</option>
                   <option value="76-100k">$76,000 - $100,000</option>
                 </select>
+                {costError && (
+                  <p className="text-red-600 text-sm mt-1">{costError}</p>
+                )}
               </div>
             </div>
           </div>
         );
-
       default:
         return null;
     }

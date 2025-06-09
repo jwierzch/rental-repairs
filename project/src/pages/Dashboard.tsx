@@ -137,7 +137,6 @@ const Dashboard = () => {
               </div>
               <div>
                 <h2 className="text-2xl font-bold text-gray-900">{eligibilityStatus}</h2>
-                <p className="text-gray-600">Assessment Score: {eligibilityScore}/100</p>
               </div>
             </div>
             <div className="text-right">
@@ -212,10 +211,6 @@ const Dashboard = () => {
                   <p className="text-sm font-medium text-gray-600">Number of Units</p>
                   <p className="text-gray-900">{applicationData.numberOfUnits}</p>
                 </div>
-                <div>
-                  <p className="text-sm font-medium text-gray-600">Rental Status</p>
-                  <p className="text-gray-900 capitalize">{applicationData.rentedOut.replace('-', ' ')}</p>
-                </div>
               </div>
               <div>
                 <p className="text-sm font-medium text-gray-600">Total Monthly Rent</p>
@@ -264,20 +259,7 @@ const Dashboard = () => {
         {/* Actions */}
         <div className="bg-white rounded-xl shadow-lg p-6">
           <h3 className="text-xl font-semibold text-gray-900 mb-4">Next Steps</h3>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <button className="flex items-center justify-center space-x-2 bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors">
-              <Download className="h-4 w-4" />
-              <span>Download Assessment</span>
-            </button>
-            <button className="flex items-center justify-center space-x-2 border border-gray-300 text-gray-700 px-6 py-3 rounded-lg hover:bg-gray-50 transition-colors">
-              <Eye className="h-4 w-4" />
-              <span>View Full Report</span>
-            </button>
-            <button className="flex items-center justify-center space-x-2 bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 transition-colors">
-              <Phone className="h-4 w-4" />
-              <span>Schedule Consultation</span>
-            </button>
-          </div>
+
         </div>
 
         {/* Contact Information */}

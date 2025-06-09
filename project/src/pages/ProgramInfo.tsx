@@ -132,9 +132,8 @@ const ProgramInfo = () => {
             <div>
               <h3 className="text-lg font-semibold text-amber-800 mb-3">Important Program Requirements</h3>
               <ul className="space-y-2 text-amber-700">
-                <li>• Government aid is distributed directly to approved contractors</li>
                 <li>• All work must be performed by licensed and insured contractors</li>
-                <li>• Properties may be subject to government follow-up inspections</li>
+                <li>• Properties subject to pre and post repair inspections</li>
                 <li>• Our professional service fee is separate from government aid</li>
               </ul>
             </div>
