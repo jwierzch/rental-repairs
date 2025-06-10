@@ -85,7 +85,7 @@ const QualificationForm = () => {
 
 
   const steps = [
-    { id: 1, title: 'Personal Information', icon: User, description: 'Tell us about yourself' },
+    { id: 1, title: 'Personal Information', icon: User, description: 'Tell us about yourself.' },
     { id: 2, title: 'Property Details', icon: Home, description: 'Your rental property information' },
     { id: 3, title: 'Rental Information', icon: FileText, description: 'Unit details and rental status' },
     { id: 4, title: 'Repair Details', icon: DollarSign, description: 'What repairs do you need?' }
@@ -335,6 +335,10 @@ const QualificationForm = () => {
             </div>
             <p className="text-xs text-gray-500 mt-1">
             {(!formData.email && !formData.phone) && "Enter an email or phone to select a preferred method."}
+            </p>
+            <p className="text-xs text-gray-500 mt-4 italic">
+              We will only use this information to reach back out to you about this specific service.
+              We will never use your information for anything else or sell it to anyone ever.
             </p>
             </div>
           </div>
